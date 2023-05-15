@@ -34,7 +34,7 @@ async def cli_call(cmd: Union[str,List[str]]) -> Tuple[str,str]:
         pass
     else:
         return None,None
-    
+
     process = await asyncio.create_subprocess_exec(
         *cmd,
         stderr=asyncio.subprocess.PIPE,
@@ -42,24 +42,24 @@ async def cli_call(cmd: Union[str,List[str]]) -> Tuple[str,str]:
     )
 
     stdout, stderr = await process.communicate()
-    
+
     stdout = stdout.decode().strip()
     stderr = stderr.decode().strip()
 
     with open("test.txt","w",encoding="UTF-8") as f:
         f.write(stdout)
-    
+
     return stdout, stderr
 
 
 async def get_yt_link_details(url: str) -> Union[Dict[str,str], None]:
-    cmd = "youtube-dl --no-warnings --youtube-skip-dash-manifest --dump-json"
+    cmd = "yt-dlp --no-warnings --youtube-skip-dash-manifest --dump-json"
     cmd = shlex.split(cmd)
     if "hotstar" in url:
         cmd.append("--geo-bypass-country")
         cmd.append("IN")
     cmd.append(url)
-    
+
     out, error = await cli_call(cmd)
     if error:
         torlog.error(f"Error occured:- {error} for url {url}")
@@ -128,7 +128,7 @@ async def create_quality_menu(url: str,message: MessageLike, message1: MessageLi
 
         buttons = list()
         for i in unique_formats.keys():
-            
+
             # add human bytes here
             if i == "tiny":
                 text = f"tiny [{human_readable_bytes(unique_formats[i][0])} - {human_readable_bytes(unique_formats[i][1])}] ➡️"
@@ -139,22 +139,22 @@ async def create_quality_menu(url: str,message: MessageLike, message1: MessageLi
             buttons.append([KeyboardButtonCallback(text,cdata.encode("UTF-8"))])
         buttons.append([KeyboardButtonCallback("Audios ➡️",f"ytdlsmenu|audios|{message1.sender_id}|{suid}|{dest}")])
         await message.edit("Choose a quality/option available below.",buttons=buttons)
-        
+
         if jsons is None:
             path = os.path.join(os.getcwd(),'userdata')
-            
+
             if not os.path.exists(path):
                 os.mkdir(path)
-            
+
             path = os.path.join(path,f"{suid}.json")
-            
+
             with open(path,"w",encoding="UTF-8") as file:
                 file.write(json.dumps(data))
 
 
 
     return True,None
-        
+
 async def handle_ytdl_command(e: MessageLike):
     if not e.is_reply:
         await e.reply("Reply to a youtube video link.")
@@ -169,7 +169,7 @@ async def handle_ytdl_command(e: MessageLike):
         )
 
     msg1 = await e.reply(f"Processing the given link......\nChoose destination. Default destination will be chosen in {get_val('DEFAULT_TIMEOUT')}.", buttons=buts)
-    
+
     choice = await get_ytdl_choice(e,tsp)
     msg1 = await msg1.edit("Processing the given link.......",buttons=None)
     await asyncio.sleep(1)
@@ -185,12 +185,12 @@ async def handle_ytdl_callbacks(e: MessageLike):
     # ytdlsmenu | format | sender_id | suid | dest
     data = e.data.decode("UTF-8")
     data = data.split("|")
-    
+
     if data[0] == "ytdlsmenu":
         if data[2] != str(e.sender_id):
             await e.answer("Not valid user, Dont touch.")
             return
-        
+
         path = os.path.join(os.getcwd(),'userdata',data[3]+".json")
         if os.path.exists(path):
             with open(path) as file:
@@ -213,20 +213,20 @@ async def handle_ytdl_callbacks(e: MessageLike):
                             height = i.get('format')
                         if not c_format == data[1]:
                             continue
-                        
-                        
+
+
                         if not height:
                             continue
-                            
+
                         text = f"{height} [{i.get('ext')}] [{human_readable_bytes(i.get('filesize'))}] {str(i.get('vcodec'))}"
                         cdata = f"ytdldfile|{format_id}|{e.sender_id}|{data[3]}|{data[4]}"
-                        
+
                         buttons.append([KeyboardButtonCallback(text,cdata.encode("UTF-8"))])
                         j+=1
-                
+
                 buttons.append([KeyboardButtonCallback("Go Back 😒",f"ytdlmmenu|{data[2]}|{data[3]}|{data[4]}")])
                 await e.edit(f"Files for quality {data[1]}, at the end it is the Video Codec. Mostly prefer the last one with you desired extension if you want streamable video. Try rest if you want.",buttons=buttons)
-                
+
 
 
         else:
@@ -251,14 +251,14 @@ async def handle_ytdl_file_download(e: MessageLike):
 
     data = e.data.decode("UTF-8")
     data = data.split("|")
-    
-    
+
+
     if data[2] != str(e.sender_id):
         await e.answer("Not valid user, Dont touch.")
         return
     else:
         await e.answer("Crunching Data.....")
-    
+
     await e.edit(buttons=None)
 
     is_audio = False
@@ -288,24 +288,24 @@ async def handle_ytdl_file_download(e: MessageLike):
                         if i.get("acodec") is not None:
                             if "none" not in i.get("acodec"):
                                 is_audio = True
-                            
-                    
+
+
             if data[1].endswith("K"):
-                cmd = f"youtube-dl -i --extract-audio --add-metadata --audio-format mp3 --audio-quality {data[1]} -o '{op_dir}/%(title)s.%(ext)s' {yt_url}"
+                cmd = f"yt-dlp -i --extract-audio --add-metadata --audio-format mp3 --audio-quality {data[1]} -o '{op_dir}/%(title)s.%(ext)s' {yt_url}"
 
             else:
                 if is_audio:
-                    cmd = f"youtube-dl --continue --embed-subs --no-warnings --hls-prefer-ffmpeg --prefer-ffmpeg -f {data[1]} -o {op_dir}/%(title)s.%(ext)s {yt_url}"
+                    cmd = f"yt-dlp --continue --embed-subs --no-warnings --hls-prefer-ffmpeg --prefer-ffmpeg -f {data[1]} -o {op_dir}/%(title)s.%(ext)s {yt_url}"
                 else:
-                    cmd = f"youtube-dl --continue --embed-subs --no-warnings --hls-prefer-ffmpeg --prefer-ffmpeg -f {data[1]}+bestaudio[ext=m4a]/best -o {op_dir}/%(title)s.%(ext)s {yt_url}"
-            
+                    cmd = f"yt-dlp --continue --embed-subs --no-warnings --hls-prefer-ffmpeg --prefer-ffmpeg -f {data[1]}+bestaudio[ext=m4a]/best -o {op_dir}/%(title)s.%(ext)s {yt_url}"
+
             out, err = await cli_call(cmd)
-            
+
             if not err:
-                
+
                 # TODO Fix the original thumbnail
                 # rdict = await upload_handel(op_dir,await e.get_message(),e.sender_id,dict(),thumb_path=thumb_path)
-                
+
                 if data[4] == "tg":
                     rdict = await upload_handel(op_dir,await e.get_message(),e.sender_id,dict(), user_msg=e)
                     await print_files(e,rdict)
@@ -330,7 +330,7 @@ async def handle_ytdl_file_download(e: MessageLike):
                     await omess.respond(emsg)
                 else:
                     await omess1.reply(emsg)
-                
+
                 if data[4] == "tg":
                     rdict = await upload_handel(op_dir,await e.get_message(),e.sender_id,dict(), user_msg=e)
                     await print_files(e,rdict)
@@ -338,7 +338,7 @@ async def handle_ytdl_file_download(e: MessageLike):
                     res = await rclone_driver(op_dir,await e.get_message(), e, None)
                     if res is None:
                         torlog.error("Error in YTDL Rclone upload.")
-                
+
 
                 try:
                     shutil.rmtree(op_dir)
@@ -358,8 +358,8 @@ async def handle_ytdl_playlist(e: MessageLike) -> None:
         return
     url = await e.get_reply_message()
     url = url.text.strip()
-    cmd = f"youtube-dl -i --flat-playlist --dump-single-json {url}"
-    
+    cmd = f"yt-dlp -i --flat-playlist --dump-single-json {url}"
+
     tsp = time.time()
     buts = [[KeyboardButtonCallback("To Telegram",data=f"ytdlselect tg {tsp}")]]
     if await get_config() is not None:
@@ -379,11 +379,11 @@ async def handle_ytdl_playlist(e: MessageLike) -> None:
     except asyncio.TimeoutError:
         await msg.edit("Processing time exceeded... The playlist seem to long to be worked with 😢\n If the playlist is short and you think its error report back.")
         return
-    
+
     if err:
         await msg.edit(f"Failed to load the playlist with the error:- <code>{err}</code>",parse_mode="html")
         return
-    
+
 
     try:
         pldata = json.loads(out)
@@ -394,7 +394,7 @@ async def handle_ytdl_playlist(e: MessageLike) -> None:
 
         entlen = len(entities)
         keybr = list()
-        
+
         # limit the max vids
         if entlen > get_val("MAX_YTPLAYLIST_SIZE"):
 
@@ -409,33 +409,33 @@ async def handle_ytdl_playlist(e: MessageLike) -> None:
             keybr.append([KeyboardButtonCallback(text=f"{i}p All videos",data=f"ytdlplaylist|{i}|{suid}|{e.sender_id}|{choice}")])
 
         keybr.append([KeyboardButtonCallback(text=f"Best All videos",data=f"ytdlplaylist|best|{suid}|{e.sender_id}|{choice}")])
-        
-        
+
+
         keybr.append([KeyboardButtonCallback(text="Best all audio only. [340k]",data=f"ytdlplaylist|320k|{suid}|{e.sender_id}|{choice}")])
         keybr.append([KeyboardButtonCallback(text="Medium all audio only. [128k]",data=f"ytdlplaylist|128k|{suid}|{e.sender_id}|{choice}")])
         keybr.append([KeyboardButtonCallback(text="Worst all audio only. [64k]",data=f"ytdlplaylist|64k|{suid}|{e.sender_id}|{choice}")])
 
-        await msg.edit(f"Found {entlen} videos in the playlist.",buttons=keybr) 
+        await msg.edit(f"Found {entlen} videos in the playlist.",buttons=keybr)
 
         path = os.path.join(os.getcwd(),'userdata')
-        
+
         if not os.path.exists(path):
             os.mkdir(path)
-        
+
         path = os.path.join(path,f"{suid}.json")
-        
+
         with open(path,"w",encoding="UTF-8") as file:
             file.write(json.dumps(pldata))
 
     except:
         await msg.edit("Failed to parse the playlist. Check log if you think its error.")
-        torlog.exception("Playlist Parse failed") 
+        torlog.exception("Playlist Parse failed")
 
 async def handle_ytdl_playlist_down(e: MessageLike) -> None:
     # ytdlplaylist | quality | suid | sender_id | choice(tg/drive)
-    
+
     data = e.data.decode("UTF-8").split("|")
-    
+
     if data[3] != str(e.sender_id):
         await e.answer("Not valid user, Dont touch.")
         return
@@ -455,7 +455,7 @@ async def handle_ytdl_playlist_down(e: MessageLike) -> None:
         url = pldata.get("webpage_url")
 
         if data[1].endswith("k"):
-            audcmd = f"youtube-dl -i --extract-audio --add-metadata --audio-format mp3 --audio-quality {data[1]} -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
+            audcmd = f"yt-dlp -i --extract-audio --add-metadata --audio-format mp3 --audio-quality {data[1]} -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
             out, err = await cli_call(audcmd)
 
             ofiles = len(os.listdir(opdir))
@@ -465,7 +465,7 @@ async def handle_ytdl_playlist_down(e: MessageLike) -> None:
             else:
                 if err:
                     await e.reply("Some videos from this have errored in download. Uploading which are successfull.")
-                
+
                 if data[4] == "tg":
                     rdict = await upload_handel(opdir, await e.get_message(), e.sender_id, dict(), user_msg=e)
                     await print_files(e,rdict)
@@ -473,14 +473,14 @@ async def handle_ytdl_playlist_down(e: MessageLike) -> None:
                     res = await rclone_driver(opdir,await e.get_message(), e, None)
                     if res is None:
                         torlog.error("Error in YTDL Rclone upload.")
-                
+
         else:
             if data[1] == "best":
-                vidcmd = f"youtube-dl -i --continue --embed-subs --no-warnings --prefer-ffmpeg -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best' -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
+                vidcmd = f"yt-dlp -i --continue --embed-subs --no-warnings --prefer-ffmpeg -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best' -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
             else:
-                vidcmd = f"youtube-dl -i --continue --embed-subs --no-warnings --prefer-ffmpeg -f 'bestvideo[ext=mp4,height<={data[1]}]+bestaudio[ext=m4a]/best' -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
+                vidcmd = f"yt-dlp -i --continue --embed-subs --no-warnings --prefer-ffmpeg -f 'bestvideo[ext=mp4,height<={data[1]}]+bestaudio[ext=m4a]/best' -o '{opdir}/%(playlist_index)s - %(title)s.%(ext)s' {url}"
             out, err = await cli_call(vidcmd)
-            
+
             ofiles = len(os.listdir(opdir))
 
             if err and ofiles < 2 :
@@ -488,7 +488,7 @@ async def handle_ytdl_playlist_down(e: MessageLike) -> None:
             else:
                 if err:
                     await e.reply("Some videos from this have errored in download. Uploading which are successfull.")
-                
+
                 if data[4] == "tg":
                     rdict = await upload_handel(opdir, await e.get_message(), e.sender_id, dict(), user_msg=e)
                     await print_files(e,rdict)
@@ -504,17 +504,17 @@ async def handle_ytdl_playlist_down(e: MessageLike) -> None:
         torlog.error("the file for that suid was not found.")
 
 async def print_files(e,files):
-    
+
     msg = "#uploads\n"
     if len(files) == 0:
         return
-    
+
     chat_id = e.chat_id
 
     for i in files.keys():
         link = f'https://t.me/c/{str(chat_id)[4:]}/{files[i]}'
         msg += f'🚩 <a href="{link}">{i}</a>\n'
-     
+
     rmsg = await e.client.get_messages(e.chat_id,ids=e.message_id)
     rmsg = await rmsg.get_reply_message()
     if rmsg is None:
@@ -531,7 +531,7 @@ async def print_files(e,files):
     ids = list()
     for i in files.keys():
         ids.append(files[i])
-    
+
     msgs = await e.client.get_messages(e.chat_id,ids=ids)
     for i in msgs:
         index = None
@@ -560,13 +560,13 @@ async def print_files(e,files):
                 KeyboardButtonUrl("Next", nextt)
             )
             nextt = f'<a href="{nextt}">Next</a>\n'
-            
+
             prev = f'https://t.me/c/{chat_id}/{ids[index-1]}'
             buttons.append(
                 KeyboardButtonUrl("Prev", prev)
             )
             prev = f'<a href="{prev}">Prev</a>\n'
-            
+
         try:
             #await i.edit("{} {} {}".format(prev,i.text,nextt),parse_mode="html")
             await i.edit(buttons=buttons)
@@ -578,7 +578,7 @@ async def get_ytdl_choice(e,timestamp):
 
     lis = [False,None]
     cbak = partial(get_leech_choice_callback,o_sender=e.sender_id,lis=lis,ts=timestamp)
-    
+
     gtyh = ""
     sam1 = [68, 89, 78, 79]
     for i in sam1:
@@ -597,7 +597,7 @@ async def get_ytdl_choice(e,timestamp):
 
     while not lis[0]:
         if (time.time() - start) >= 60: #TIMEOUT_SEC:
-            
+
             if defleech == "leech":
                 return "tg"
             elif defleech == "rclone":
@@ -609,7 +609,7 @@ async def get_ytdl_choice(e,timestamp):
         await asyncio.sleep(1)
 
     val = lis[1]
-    
+
     e.client.remove_event_handler(cbak)
 
     return val
@@ -622,10 +622,10 @@ async def get_leech_choice_callback(e,o_sender,lis,ts):
     data = e.data.decode().split(" ")
     if data [2] != str(ts):
         return
-    
+
     lis[0] = True
-    
+
     lis[1] = data[1]
 #todo
 # Add the YT playlist feature here
-# Add the YT channels feature here 
+# Add the YT channels feature here

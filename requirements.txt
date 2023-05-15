@@ -12,11 +12,11 @@ gunicorn==20.0.4
 hachoir==3.1.1
 Pillow>=8.1.1
 psutil==5.8.0
-psycopg2-binary==2.8.5
+psycopg2-binary
 pyaes==1.6.1
 pyasn1==0.4.8
 pycparser==2.20
-qbittorrent-api==2020.7.7
+qbittorrent-api
 requests==2.24.0
 rsa==4.7
 six==1.15.0
